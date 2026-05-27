@@ -10,19 +10,17 @@ class LazyProperty:
         self._func = func
         self.varname = f"var_{func.__name__}"
 
-    def __set_name__(self, owner, name):
-        self._name = name
-
     def __get__(self, instance, owner=None):
-        if self is None:
+        if instance is None:
             return self
-        if hasattr(instance, self.varname):
-            val = getattr(instance, self.varname)
+        try:
+            val = instance.__dict__[self.varname]
             print(f"returning {self.varname}")
             return val
-        val = self._func(instance)
-        setattr(instance, self.varname, val)
-        return val
+        except KeyError:
+            val = self._func(instance)
+            instance.__dict__[self.varname] = val
+            return val
 
 
 class Circle:
