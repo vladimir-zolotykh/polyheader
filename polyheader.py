@@ -13,14 +13,14 @@ class Field:
     def __get__(self, instance, owner=None):
         if instance is None:
             return self
-        if instance(self.fmt_or_type, str):
+        if isinstance(self.fmt_or_type, str):
             fmt: str = self.fmt_or_type
             return struct.unpack_from(fmt, instance.view, self.offset)
         elif isinstance(self.fmt_or_type, FieldMeta):
             view: FieldMeta = self.fmt_or_type
             a = self.offset
             z = self.offset + view._size
-            return view(instance._view[a:z])
+            return view(instance.view[a:z])
 
 
 class FieldMeta(type):
@@ -37,9 +37,9 @@ class FieldMeta(type):
                 fields.append(name)
                 offset += struct.calcsize(fmt)
             elif isinstance(val, FieldMeta):
-                view = val
-                clsdict[name] = view
-                fields.append[name]
+                view: FieldMeta = val
+                clsdict[name] = Field(name, view, offset)
+                fields.append(name)
                 offset += view._size
         clsdict["_size"] = offset
         clsdict["_fields"] = fields
@@ -66,7 +66,5 @@ class PolyHeader(View):
 if __name__ == "__main__":
     with open("polys.bin", "rb") as fd:
         ph = PolyHeader(fd.read(PolyHeader._size))
-        print(ph._fields)
-        print(ph.min)
-        print(ph._size)
         print(ph.code)
+        print(ph.min.x)
