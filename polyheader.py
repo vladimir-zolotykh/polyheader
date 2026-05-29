@@ -16,6 +16,12 @@ class Field:
             return self
         if isinstance(self.fmt_or_type, str):
             fmt: str = self.fmt_or_type
+            # return struct.unpack_from(fmt, instance.view, self.offset)
+            tup = struct.unpack_from(fmt, instance.view, self.offset)
+            if len(tup) == 1:
+                return tup[0]
+            else:
+                return tup
             return struct.unpack_from(fmt, instance.view, self.offset)
         elif isinstance(self.fmt_or_type, FieldMeta):
             view: FieldMeta = self.fmt_or_type
@@ -60,18 +66,18 @@ class SizedRecord:
 
     @classmethod
     def from_file(cls, fd: BinaryIO):
-        (nbytes,) = fd.read(struct.calcsize("<i"))
+        (nbytes,) = struct.unpack("<i", fd.read(struct.calcsize("<i")))
         return cls(fd.read(nbytes - 4))
 
     def iter_as(self, fmt_or_type: str or FieldMeta):
         if isinstance(fmt_or_type, str):
-            for off in range(0, self.size, struct.calcsize(fmt_or_type)):
+            for off in range(0, len(self.view), struct.calcsize(fmt_or_type)):
                 z = off + struct.calcsize(fmt_or_type)
-                yield self.view[off:z]
+                yield struct.unpack_from(fmt_or_type, self.view[off:z])
         elif isinstance(fmt_or_type, FieldMeta):
             for off in range(0, len(self.view), fmt_or_type._size):
                 z = off + fmt_or_type._size
-                yield self.view[off:z]
+                yield fmt_or_type(self.view[off:z])
 
 
 class Point(View):
@@ -91,7 +97,11 @@ if __name__ == "__main__":
         ph = PolyHeader(fd.read(PolyHeader._size))
         print(ph.code)
         print(ph.min.x)
+        # for _ in range(ph.num_polys):
+        #     rec = SizedRecord.from_file(fd)
+        #     for pp in rec.iter_as("<dd"):
+        #         print(pp)
         for _ in range(ph.num_polys):
             rec = SizedRecord.from_file(fd)
-            for pp in rec.iter_as("<dd"):
-                print(pp)
+            for pp in rec.iter_as(Point):
+                print(pp.x, pp.y)
