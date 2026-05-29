@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # PYTHON_ARGCOMPLETE_OK
 from __future__ import annotations
+from typing import BinaryIO
 import struct
 
 
@@ -53,6 +54,26 @@ class View(metaclass=FieldMeta):
         self.view = memoryview(bytesdata)
 
 
+class SizedRecord:
+    def __init__(self, bytesdata: bytes | memoryview):
+        self.view = memoryview(bytesdata)
+
+    @classmethod
+    def from_file(cls, fd: BinaryIO):
+        (nbytes,) = fd.read(struct.calcsize("<i"))
+        return cls(fd.read(nbytes - 4))
+
+    def iter_as(self, fmt_or_type: str or FieldMeta):
+        if isinstance(fmt_or_type, str):
+            for off in range(0, self.size, struct.calcsize(fmt_or_type)):
+                z = off + struct.calcsize(fmt_or_type)
+                yield self.view[off:z]
+        elif isinstance(fmt_or_type, FieldMeta):
+            for off in range(0, len(self.view), fmt_or_type._size):
+                z = off + fmt_or_type._size
+                yield self.view[off:z]
+
+
 class Point(View):
     x = "<d"
     y = "<d"
@@ -70,3 +91,7 @@ if __name__ == "__main__":
         ph = PolyHeader(fd.read(PolyHeader._size))
         print(ph.code)
         print(ph.min.x)
+        for _ in range(ph.num_polys):
+            rec = SizedRecord.from_file(fd)
+            for pp in rec.iter_as("<dd"):
+                print(pp)
