@@ -24,6 +24,8 @@ class Field:
 
 
 class FieldMeta(type):
+    _size = 0
+
     def __new__(mcls, clsname, bases, clsdict):
         offset = 0
         fields = []
