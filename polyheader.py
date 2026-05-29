@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # PYTHON_ARGCOMPLETE_OK
+from __future__ import annotations
 import struct
 
 
 class Field:
-    def __init__(self, name: str, fmt: str, offset: int):
-        self.fmt = fmt
+    def __init__(self, name: str, fmt_or_type: str | FieldMeta, offset: int):
+        self.fmt_or_type = fmt_or_type
         self.offset = offset
 
     def __get__(self, instance, owner=None):
         if instance is None:
             return self
-        return struct.unpack_from(self.fmt, instance.view, self.offset)
+        if instance(self.fmt_or_type, str):
+            fmt: str = self.fmt_or_type
+            return struct.unpack_from(fmt, instance.view, self.offset)
+        elif isinstance(self.fmt_or_type, FieldMeta):
+            view: FieldMeta = self.fmt_or_type
+            a = self.offset
+            z = self.offset + view._size
+            return view(instance._view[a:z])
 
 
 class FieldMeta(type):
@@ -28,6 +36,11 @@ class FieldMeta(type):
                 clsdict[name] = field
                 fields.append(name)
                 offset += struct.calcsize(fmt)
+            elif isinstance(val, FieldMeta):
+                view = val
+                clsdict[name] = view
+                fields.append[name]
+                offset += view._size
         clsdict["_size"] = offset
         clsdict["_fields"] = fields
         return super().__new__(mcls, clsname, bases, clsdict)
@@ -38,18 +51,22 @@ class View(metaclass=FieldMeta):
         self.view = memoryview(bytesdata)
 
 
+class Point(View):
+    x = "<d"
+    y = "<d"
+
+
 class PolyHeader(View):
     code = "<i"
-    min_x = "d"
-    min_y = "d"
-    max_x = "d"
-    max_y = "d"
-    num_polys = "i"
+    min = Point
+    max = Point
+    num_polys = "<i"
 
 
 if __name__ == "__main__":
     with open("polys.bin", "rb") as fd:
         ph = PolyHeader(fd.read(PolyHeader._size))
         print(ph._fields)
+        print(ph.min)
         print(ph._size)
         print(ph.code)
