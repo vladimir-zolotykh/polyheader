@@ -90,18 +90,3 @@ class PolyHeader(View):
     min = Point
     max = Point
     num_polys = "<i"
-
-
-if __name__ == "__main__":
-    with open("polys.bin", "rb") as fd:
-        ph = PolyHeader(fd.read(PolyHeader._size))
-        print(ph.code)
-        print(ph.min.x)
-        # for _ in range(ph.num_polys):
-        #     rec = SizedRecord.from_file(fd)
-        #     for pp in rec.iter_as("<dd"):
-        #         print(pp)
-        for _ in range(ph.num_polys):
-            rec = SizedRecord.from_file(fd)
-            for pp in rec.iter_as(Point):
-                print(pp.x, pp.y)
