@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # PYTHON_ARGCOMPLETE_OK
 from __future__ import annotations
-from typing import Any
+from typing import Any, Self, Iterator, cast
 from io import BytesIO
 import struct
 
@@ -60,11 +60,11 @@ class View(metaclass=FieldMeta):
     def __init__(self, bytesdata):
         self.view = memoryview(bytesdata)
 
-    def as_tuple(self) -> tuple[Any, ...]:
-        return tuple((getattr(self, name) for name in self._fields))
+    # def as_tuple(self) -> tuple[Any, ...]:
+    #     return tuple((getattr(self, name) for name in self._fields))
 
-    def as_csv(self) -> str:
-        return ", ".join((f"{f}={getattr(self, f)!r}" for f in self._fields))
+    # def as_csv(self) -> str:
+    #     return ", ".join((f"{f}={getattr(self, f)!r}" for f in self._fields))
 
 
 class SizedRecord:
@@ -72,11 +72,11 @@ class SizedRecord:
         self.view = memoryview(bytesdata)
 
     @classmethod
-    def from_file(cls, fd: BytesIO):
+    def from_file(cls, fd: BytesIO) -> Self:
         (nbytes,) = struct.unpack("<i", fd.read(struct.calcsize("<i")))
         return cls(fd.read(nbytes - 4))
 
-    def iter_as(self, fmt_or_type: str or FieldMeta):
+    def iter_as(self, fmt_or_type: str | FieldMeta) -> Iterator[Any]:
         if isinstance(fmt_or_type, str):
             for off in range(0, len(self.view), struct.calcsize(fmt_or_type)):
                 z = off + struct.calcsize(fmt_or_type)
@@ -87,7 +87,8 @@ class SizedRecord:
                 yield fmt_or_type(self.view[off:z])
 
 
-def as_tuple(view: FieldMeta) -> tuple[Any, ...]:
+# def as_tuple(view: FieldMeta) -> tuple[Any, ...] | FieldMeta:
+def as_tuple(view: View) -> tuple[Any, ...] | View:
     if hasattr(view, "_fields"):
         return tuple((as_tuple(getattr(view, name)) for name in view._fields))
     else:
@@ -112,9 +113,9 @@ if __name__ == "__main__":
         print(as_tuple(ph))
         data = fd.read()
 
-        def print_points(stream: BytesIO, fmt_or_type: str | object):
-            points = []
-            for _ in range(ph.num_polys):
+        def print_points(stream: BytesIO, fmt_or_type: str | FieldMeta) -> None:
+            points: list[Any] = []
+            for _ in range(cast(int, ph.num_polys)):
                 rec = SizedRecord.from_file(stream)
                 points.extend((as_tuple(pp) for pp in rec.iter_as(fmt_or_type)))
             print(points)
