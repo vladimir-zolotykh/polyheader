@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 # PYTHON_ARGCOMPLETE_OK
 from __future__ import annotations
-from typing import BinaryIO, Any
+from typing import Any
+from io import BytesIO
 import struct
 
 
@@ -71,7 +72,7 @@ class SizedRecord:
         self.view = memoryview(bytesdata)
 
     @classmethod
-    def from_file(cls, fd: BinaryIO):
+    def from_file(cls, fd: BytesIO):
         (nbytes,) = struct.unpack("<i", fd.read(struct.calcsize("<i")))
         return cls(fd.read(nbytes - 4))
 
@@ -90,7 +91,7 @@ def as_tuple(view: FieldMeta) -> tuple[Any, ...]:
     if hasattr(view, "_fields"):
         return tuple((as_tuple(getattr(view, name)) for name in view._fields))
     else:
-        return str(view)
+        return view
 
 
 class Point(View):
@@ -106,19 +107,17 @@ class PolyHeader(View):
 
 
 if __name__ == "__main__":
-    with open("polys.bin", "rb") as fd1, open("polys.bin", "rb") as fd2:
-        ph = PolyHeader(fd1.read(PolyHeader._size))
+    with open("polys.bin", "rb") as fd:
+        ph = PolyHeader(fd.read(PolyHeader._size))
         print(as_tuple(ph))
-        points = []
-        for _ in range(ph.num_polys):
-            rec = SizedRecord.from_file(fd1)
-            points.extend(rec.iter_as("<dd"))
-        print(points)
-        ph = PolyHeader(fd2.read(PolyHeader._size))
-        print(as_tuple(ph))
-        points = []
-        for _ in range(ph.num_polys):
-            rec = SizedRecord.from_file(fd2)
-            for pp in rec.iter_as(Point):
-                points.append(tuple((pp.x, pp.y)))
-        print(points)
+        data = fd.read()
+
+        def print_points(stream: BytesIO, fmt_or_type: str | object):
+            points = []
+            for _ in range(ph.num_polys):
+                rec = SizedRecord.from_file(stream)
+                points.extend((as_tuple(pp) for pp in rec.iter_as(fmt_or_type)))
+            print(points)
+
+        print_points(BytesIO(data), "<dd")
+        print_points(BytesIO(data), Point)
