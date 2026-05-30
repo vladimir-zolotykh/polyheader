@@ -60,11 +60,17 @@ class View(metaclass=FieldMeta):
     def __init__(self, bytesdata):
         self.view = memoryview(bytesdata)
 
-    def as_tuple(self) -> tuple[Any, ...]:
-        return tuple((getattr(self, name) for name in self._fields))
+    def as_tuple(self) -> tuple[Any, ...] | Self:
+        if hasattr(self, "_fields"):
+            return tuple((getattr(self, name) for name in self._fields))
+        else:
+            return self
 
     def as_csv(self) -> str:
-        return ", ".join((f"{f}={getattr(self, f)!r}" for f in self._fields))
+        if hasattr(self, "_fields"):
+            return ", ".join((f"{f}={getattr(self, f)!r}" for f in self._fields))
+        else:
+            return str(self)
 
 
 class SizedRecord:
