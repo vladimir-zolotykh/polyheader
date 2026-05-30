@@ -77,13 +77,17 @@ class SizedRecord:
         return cls(fd.read(nbytes - 4))
 
     def iter_as(self, fmt_or_type: str | FieldMeta) -> Iterator[Any]:
-        if isinstance(fmt_or_type, str):
-            for off in range(0, len(self.view), struct.calcsize(fmt_or_type)):
-                z = off + struct.calcsize(fmt_or_type)
+        step = (
+            struct.calcsize(fmt_or_type)
+            if isinstance(fmt_or_type, str)
+            else fmt_or_type._size
+        )
+        for off in range(0, len(self.view), step):
+            if isinstance(fmt_or_type, str):
+                z = off + step
                 yield struct.unpack_from(fmt_or_type, self.view[off:z])
-        elif isinstance(fmt_or_type, FieldMeta):
-            for off in range(0, len(self.view), fmt_or_type._size):
-                z = off + fmt_or_type._size
+            elif isinstance(fmt_or_type, FieldMeta):
+                z = off + step
                 yield fmt_or_type(self.view[off:z])
 
 
